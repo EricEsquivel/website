@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h1 align="center">This is the dashboard</h1>
+    <div class="container">
+        <h2>My username is {{user.username}}</h2>
+        <h2>My ID is {{user.id}}</h2>
+        <h2>My password is {{user.password}}</h2>
+    </div>
+{% endblock content %}

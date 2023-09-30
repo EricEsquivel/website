@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block title %}Messages{% endblock %}
+
+{% block content %}
+<h1 align="center">Messages</h1>
+    <div class="container">
+        {% for i in messages %}
+            <h5>From: {{i.sender}}</h6>
+            <style>
+                .content {
+                  font-size: 20px;
+                }
+            </style>
+            <p class="content">{{i.content}}</p>
+            <hr>
+            <br>
+        {% endfor %}
+    </div>
+{% endblock content %}

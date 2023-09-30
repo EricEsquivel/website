@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block title %}Account{% endblock %}
+
+{% block content %}
+<h1 align="center">Accounts</h1>
+<form method="POST">
+    <div class="container">
+        <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input type="title" class="form-control" id="title" placeholder="Update your username" name="username">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="title" class="form-control" id="title" placeholder="Update your password" name="password">
+        </div>
+        
+        <div class="mb-3">  
+            <button type="submit" class="btn btn-primary">Update</button>
+        </div>
+    </div>
+</form>
+{% endblock content %}
