@@ -1,9 +1,9 @@
 from flask import Flask, flash, render_template, redirect, request, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_session import Session
-import hashlib
+import hashlib, uuid
 from datetime import datetime
-import uuid
+from functools import wraps
 
 # Main
 app = Flask(__name__)
@@ -18,30 +18,33 @@ Session(app)
 
 ######### Session checker and update database functions ############
 
-def ifnotloggedinexecute(func): # this is a decorator; if user is not logged in proceed, otherwise redirect to home page. Used for /login and /register
+def loginrequired(func): # this is a decorator; if user is logged in proceed, otherwise redirect to home page. Used for login required paths
+    @wraps(func)
     def wrapper():
             try:
-                if session["value"]:
-                    return redirect("/")
-                    flash("You are already logged in!", category="error")
-                else:
-                    func()
-            except KeyError:
-                print("This thing worked")
-                return redirect("/logout")
-    return wrapper
-
-def ifloggedinexecute(func): # this is a decorator; if user is logged in proceed, otherwise say you don't have access and redirect to home page. Used for every other route.
-    def wrapper2():
-            try:
-                if session["value"]:
-                    func()
+                if session["value"] != None:
+                    return func()
                 else:
                     flash("You don't have access to this page!", category="error")
                     return redirect("/")
             except KeyError:
                 return redirect("/logout")
+    return wrapper
+
+
+def nologinrequired(func): # this is a decorator; if user is not logged in proceed, otherwise redirect to home page. Used for /login and /register
+    @wraps(func)
+    def wrapper2():
+            try:
+                if session["value"] == None:
+                    return func()
+                else:
+                    flash("You are already logged in", category="error")
+                    return redirect("/")
+            except KeyError:
+                return redirect("/logout")
     return wrapper2
+
 
 # update tables after changing account info
 def update_db(user, postsuser, msgsusersender, msgsuserrecipient):
@@ -103,16 +106,16 @@ def home():
 
 
 # View your own user dashboard #
-@ifloggedinexecute
 @app.route("/dashboard")
+@loginrequired
 def dashboard():
     user = Users_table.query.filter_by(useruuid=session["value"]).first()
     return render_template("dashboard.html",user=user)
 
 
 # View your accounts page #
-@ifloggedinexecute
 @app.route("/accounts", methods = ["GET", "POST"])
+@loginrequired
 def accounts():
     user = Users_table.query.filter_by(useruuid=session["value"]).first()
     postsuser = Posts_table.query.filter_by(author=user.username).all()
@@ -145,13 +148,11 @@ def accounts():
             db.session.commit() # commit to db
             flash("Account updated.", category="success")
         return render_template("accounts.html",user=user)
-    flash("You don't have access to this page!", category="error")
-    return redirect("/")
 
 
 # Create a post #
-@ifloggedinexecute
 @app.route("/createpost", methods = ["GET", "POST"])
+@loginrequired
 def createpost():
     user = Users_table.query.filter_by(useruuid=session["value"]).first()
     if request.method == "POST":
@@ -163,7 +164,7 @@ def createpost():
         elif len(content) == 0:
             flash("content is blank", category="error")
         else:
-            userpost = Posts_table(content=content, title=title, author=author, timeposted=datetime.now.strftime('%D %H:%M')) # Creating post
+            userpost = Posts_table(content=content, title=title, author=author, timeposted=datetime.now().strftime('%D %H:%M')) # Creating post
             db.session.add(userpost)
             db.session.commit()
             flash("Post created", category="success")
@@ -171,8 +172,8 @@ def createpost():
 
 
 # Send a message to someone #
-@ifloggedinexecute
 @app.route("/sendmsg", methods = ["GET", "POST"])
+@loginrequired
 def sendmsg():
     senderuuid = Users_table.query.filter_by(useruuid=session["value"]).first().useruuid
     if request.method == "POST":
@@ -189,7 +190,7 @@ def sendmsg():
             # and username's password is equal to password entered
             if recipientfound: # send message to user
                 recipientuuid = recipientfound.useruuid
-                createmsg = Msgs_table(content=content, senderuuid=senderuuid, sender=Users_table.query.filter_by(useruuid=senderuuid).first().username, recipientuuid=recipientuuid, recipient=Users_table.query.filter_by(useruuid=recipientuuid).first().username, timesent=datetime.now.strftime('%D %H:%M')) # Creating post
+                createmsg = Msgs_table(content=content, senderuuid=senderuuid, sender=Users_table.query.filter_by(useruuid=senderuuid).first().username, recipientuuid=recipientuuid, recipient=Users_table.query.filter_by(useruuid=recipientuuid).first().username, timesent=datetime.now().strftime('%D %H:%M')) # Creating post
                 db.session.add(createmsg)
                 db.session.commit()
                 flash(f"Message sent!", category="success")
@@ -199,25 +200,28 @@ def sendmsg():
 
 
 # View public posts #
-@ifloggedinexecute
 @app.route("/posts")
+@loginrequired
 def posts():
     posts = Posts_table.query.all()
     return render_template("posts.html",posts=posts)
 
 
 # View your own user messages #
-@ifloggedinexecute
 @app.route("/messages")
+@loginrequired
 def messages():
-    myuseruuid = Users_table.query.filter_by(useruuid=session["value"]).first().useruuid # what is my uuid
-    messages = Msgs_table.query.filter_by(recipientuuid=myuseruuid).all() # messages from msgs table with my uuid
-    return render_template("messages.html", messages=messages)
-
+    if session["value"] != None:
+        myuseruuid = Users_table.query.filter_by(useruuid=session["value"]).first().useruuid # what is my uuid
+        messages = Msgs_table.query.filter_by(recipientuuid=myuseruuid).all() # messages from msgs table with my uuid
+        return render_template("messages.html", messages=messages)
+    else:
+        flash("You don't have access to this page!", category="error")
+        return redirect("/")
 
 # Default page is the login, and it will run a check against the database to make sure account exists #
-@ifnotloggedinexecute
 @app.route("/login", methods = ["GET", "POST"])
+@nologinrequired
 def login():
     if request.method == "POST":
         username = request.form.get("username")
@@ -241,10 +245,9 @@ def login():
                 flash("Invalid credentials!", category="error")
     return render_template("login.html")
 
-
 # Route for registration page, run a check against database to make sure account doesn't exist already #
-@ifnotloggedinexecute
 @app.route("/register", methods=["GET", "POST"])
+@nologinrequired
 def register():
     if request.method == "POST":
         username = request.form.get("username")
@@ -282,6 +285,7 @@ def logout():
 # Route for users page, just shows the database table for testing #
                     # REMOVE IN PRODUCTION #
 @app.route("/users")
+@loginrequired
 def seeusers():
     if session["value"] == Users_table.query.filter_by(username="admin").first().useruuid:
         allusers = Users_table.query.all()
@@ -289,7 +293,6 @@ def seeusers():
     else:
         flash("You don't have access to this page!", category="error")
         return redirect("/")
-
 #######
 
 
