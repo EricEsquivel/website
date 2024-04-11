@@ -211,13 +211,9 @@ def posts():
 @app.route("/messages")
 @loginrequired
 def messages():
-    if session["value"] != None:
-        myuseruuid = Users_table.query.filter_by(useruuid=session["value"]).first().useruuid # what is my uuid
-        messages = Msgs_table.query.filter_by(recipientuuid=myuseruuid).all() # messages from msgs table with my uuid
-        return render_template("messages.html", messages=messages)
-    else:
-        flash("You don't have access to this page!", category="error")
-        return redirect("/")
+    myuseruuid = Users_table.query.filter_by(useruuid=session["value"]).first().useruuid # what is my uuid
+    messages = Msgs_table.query.filter_by(recipientuuid=myuseruuid).all() # messages from msgs table with my uuid
+    return render_template("messages.html", messages=messages)
 
 # Default page is the login, and it will run a check against the database to make sure account exists #
 @app.route("/login", methods = ["GET", "POST"])
