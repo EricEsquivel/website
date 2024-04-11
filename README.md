@@ -1,5 +1,2 @@
 ## website
-### This is our website
-
-### About:
-This is our team website
+### This is a website made in Flask
